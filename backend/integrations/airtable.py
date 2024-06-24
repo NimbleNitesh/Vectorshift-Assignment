@@ -17,8 +17,8 @@ from redis_client import add_key_value_redis, get_value_redis, delete_key_redis
 
 # CLIENT_ID = 'XXX'
 # CLIENT_SECRET = 'XXX'
-CLIENT_ID = '329147ef-ac8b-4863-bced-77b7b195258f'
-CLIENT_SECRET = 'e59aec7edddef2edf4388ef611b151ab5fc85c61f828df909c147085e8ffb4f1'
+CLIENT_ID = 'a37c129f-a2ec-45e8-a13a-dafe97cb8206'
+CLIENT_SECRET = '8511e3378964bb15b40cc93287f2da13bf4f9d072797c805668d967a45a4f71c'
 REDIRECT_URI = 'http://localhost:8000/integrations/airtable/oauth2callback'
 authorization_url = f'https://airtable.com/oauth2/v1/authorize?client_id={CLIENT_ID}&response_type=code&owner=user&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fintegrations%2Fairtable%2Foauth2callback'
 
@@ -26,6 +26,7 @@ encoded_client_id_secret = base64.b64encode(f'{CLIENT_ID}:{CLIENT_SECRET}'.encod
 scope = 'data.records:read data.records:write data.recordComments:read data.recordComments:write schema.bases:read schema.bases:write'
 
 async def authorize_airtable(user_id, org_id):
+    print('authorize_airtable called')
     state_data = {
         'state': secrets.token_urlsafe(32),
         'user_id': user_id,
@@ -47,6 +48,7 @@ async def authorize_airtable(user_id, org_id):
     return auth_url
 
 async def oauth2callback_airtable(request: Request):
+    print('oauth2callback_airtable called')
     if request.query_params.get('error'):
         raise HTTPException(status_code=400, detail=request.query_params.get('error_description'))
     code = request.query_params.get('code')
@@ -97,6 +99,7 @@ async def oauth2callback_airtable(request: Request):
     return HTMLResponse(content=close_window_script)
 
 async def get_airtable_credentials(user_id, org_id):
+    print('get_airtable_credentials called')
     credentials = await get_value_redis(f'airtable_credentials:{org_id}:{user_id}')
     if not credentials:
         raise HTTPException(status_code=400, detail='No credentials found.')
@@ -108,6 +111,7 @@ async def get_airtable_credentials(user_id, org_id):
 def create_integration_item_metadata_object(
     response_json: str, item_type: str, parent_id=None, parent_name=None
 ) -> IntegrationItem:
+    print('create_integration_item_metadata_object called')
     parent_id = None if parent_id is None else parent_id + '_Base'
     integration_item_metadata = IntegrationItem(
         id=response_json.get('id', None) + '_' + item_type,
@@ -123,6 +127,7 @@ def create_integration_item_metadata_object(
 def fetch_items(
     access_token: str, url: str, aggregated_response: list, offset=None
 ) -> dict:
+    print('fetch_items called')
     """Fetching the list of bases"""
     params = {'offset': offset} if offset is not None else {}
     headers = {'Authorization': f'Bearer {access_token}'}
@@ -142,6 +147,7 @@ def fetch_items(
 
 
 async def get_items_airtable(credentials) -> list[IntegrationItem]:
+    print('get_items_airtable called')
     credentials = json.loads(credentials)
     url = 'https://api.airtable.com/v0/meta/bases'
     list_of_integration_item_metadata = []

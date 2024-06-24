@@ -12,14 +12,17 @@ from integrations.integration_item import IntegrationItem
 
 from redis_client import add_key_value_redis, get_value_redis, delete_key_redis
 
-CLIENT_ID = 'XXX'
-CLIENT_SECRET = 'XXX'
+CLIENT_ID = '4e90c596-b532-47e8-a4bb-3e7755e7beab'
+CLIENT_SECRET = 'secret_psPEcOklGxDC5hmR3dvSUz2ivY6BJWi9o2RCO0M43Dm'
 encoded_client_id_secret = base64.b64encode(f'{CLIENT_ID}:{CLIENT_SECRET}'.encode()).decode()
 
 REDIRECT_URI = 'http://localhost:8000/integrations/notion/oauth2callback'
+
+# au = 'https://api.notion.com/v1/oauth/authorize?client_id=4e90c596-b532-47e8-a4bb-3e7755e7beab&response_type=code&owner=user&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fintegrations%2Fnotion%2Foauth2callback'
 authorization_url = f'https://api.notion.com/v1/oauth/authorize?client_id={CLIENT_ID}&response_type=code&owner=user&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fintegrations%2Fnotion%2Foauth2callback'
 
 async def authorize_notion(user_id, org_id):
+    print('authorize_notion called')
     state_data = {
         'state': secrets.token_urlsafe(32),
         'user_id': user_id,
@@ -31,6 +34,7 @@ async def authorize_notion(user_id, org_id):
     return f'{authorization_url}&state={encoded_state}'
 
 async def oauth2callback_notion(request: Request):
+    print('oauth2callback_notion called')
     if request.query_params.get('error'):
         raise HTTPException(status_code=400, detail=request.query_params.get('error'))
     code = request.query_params.get('code')
@@ -75,6 +79,7 @@ async def oauth2callback_notion(request: Request):
     return HTMLResponse(content=close_window_script)
 
 async def get_notion_credentials(user_id, org_id):
+    print('get_notion_credentials called')
     credentials = await get_value_redis(f'notion_credentials:{org_id}:{user_id}')
     if not credentials:
         raise HTTPException(status_code=400, detail='No credentials found.')
@@ -86,6 +91,7 @@ async def get_notion_credentials(user_id, org_id):
     return credentials
 
 def _recursive_dict_search(data, target_key):
+    # print('recursive_dict_search called')
     """Recursively search for a key in a dictionary of dictionaries."""
     if target_key in data:
         return data[target_key]
@@ -106,6 +112,7 @@ def _recursive_dict_search(data, target_key):
 def create_integration_item_metadata_object(
     response_json: str,
 ) -> IntegrationItem:
+    print('create_integration_item_metadata_object called')
     """creates an integration metadata object from the response"""
     name = _recursive_dict_search(response_json['properties'], 'content')
     parent_type = (
@@ -136,6 +143,7 @@ def create_integration_item_metadata_object(
     return integration_item_metadata
 
 async def get_items_notion(credentials) -> list[IntegrationItem]:
+    print('get_items_notion called')
     """Aggregates all metadata relevant for a notion integration"""
     credentials = json.loads(credentials)
     response = requests.post(
@@ -146,13 +154,12 @@ async def get_items_notion(credentials) -> list[IntegrationItem]:
         },
     )
 
+    list_of_integration_item_metadata = []
     if response.status_code == 200:
         results = response.json()['results']
-        list_of_integration_item_metadata = []
         for result in results:
             list_of_integration_item_metadata.append(
                 create_integration_item_metadata_object(result)
             )
 
-        print(list_of_integration_item_metadata)
-    return
+    return list_of_integration_item_metadata
